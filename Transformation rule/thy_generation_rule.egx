@@ -1,0 +1,23 @@
+pre{
+ var javaDate = new Native("java.text.SimpleDateFormat")("ddMMyyyy_HHmmss").
+  format(new Native("java.util.Date"));
+ var javaDateString = new String;
+ javaDateString= javaDate.toString();
+ 
+ var stm_name: String;
+ for (stm in RC!StateMachineDef.allInstances)
+{ 
+stm_name=stm.name;
+}
+}
+
+rule RC2ZM
+transform RoboChart: RC!RCPackage {
+
+template : "thy_generation_rule.egl"
+target : "thy_gen/" + stm_name+"_"+javaDateString +".thy" 
+//the two lines below doesn't work', the 1st return name as 'RC!StateMachineDef'
+//2nd returns the correct one, and generate the thy well, but with an error message in console because there are two packages?
+//target : "thy_gen/" + RC!StateMachineDef.name+"_"+javaDateString +".thy" 
+//target : "thy_gen/" + RoboChart.machines.at(0).name+"_"+javaDateString +".thy"
+}
