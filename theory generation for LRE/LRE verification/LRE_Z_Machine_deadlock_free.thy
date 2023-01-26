@@ -145,7 +145,6 @@ zstore LRE_Beh =
   advV::" integer\<times> integer"
   st::"St"
   tr :: "(St, Evt)tag list"
-  trg:: "Evt option"
   triggers:: "Evt set"
   where inv: 
            "wf_rcstore tr st None" 
@@ -172,7 +171,6 @@ zoperation InitialToOCM =
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM]
          , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
 
 zoperation OCMToMOM =
@@ -182,7 +180,6 @@ zoperation OCMToMOM =
   		  , tr\<Zprime>=tr  @ [Event reqMOM]  @ [Event advVel]@ [State MOM] 
         , advV\<Zprime> = setVel((xvel, yvel), MOMVel)
         , (xvel,yvel)\<Zprime> = setVel((xvel, yvel), MOMVel)
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {endTask, reqOCM}                
           ]"
 
@@ -192,7 +189,6 @@ zoperation MOMToOCM =
   pre "st= MOM"
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM] 
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}        
           ]"
 
@@ -201,8 +197,7 @@ zoperation MOMToOCM_1 =
   pre "st= MOM \<and> inOPEZ(pos) \<and> (dist(pos,Obsts)>  (MinSafeDist+5)^2  \<or> CDA(pos,Obsts, (xvel,yvel))>  MinSafeDist^2)"
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM]
-        , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None       
+        , triggers\<Zprime> = {reqMOM, reqVel}      
           ]"
 
         
@@ -214,8 +209,7 @@ zoperation MOMToOCM_2 =
       
         , advV\<Zprime> = ZeroVel
         , (xvel,yvel)\<Zprime> = ZeroVel
-        , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None       
+        , triggers\<Zprime> = {reqMOM, reqVel}      
           ]"
 
 zoperation HCMToOCM =
@@ -223,7 +217,6 @@ zoperation HCMToOCM =
   pre "st= HCM "
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM] 
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}        
           ]"
 
@@ -233,8 +226,7 @@ zoperation HCMToOCM_1 =
   pre "st= HCM \<and> inOPEZ(pos)\<and> (dist(pos,Obsts)>  (MinSafeDist+5)^2  \<or> CDA(pos,Obsts, (xvel,yvel))>  MinSafeDist^2)"
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM] 
-        , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None       
+        , triggers\<Zprime> = {reqMOM, reqVel}     
           ]"
 
 zoperation MOMToHCM =
@@ -244,8 +236,7 @@ zoperation MOMToHCM =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State HCM]
         , advV\<Zprime> = setVel((xvel, yvel), HCMVel)
         , (xvel,yvel)\<Zprime> = setVel((xvel, yvel), HCMVel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None       
+        , triggers\<Zprime> = {reqOCM}      
           ]"
 
 
@@ -257,8 +248,7 @@ zoperation HCMToMOM =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State MOM]
         , advV\<Zprime> = setVel((xvel, yvel), MOMVel)
         , (xvel,yvel)\<Zprime> =  setVel((xvel, yvel), MOMVel)
-        , triggers\<Zprime> = { endTask, reqOCM} 
-        , trg\<Zprime> = None      
+        , triggers\<Zprime> = { endTask, reqOCM}      
           ]"
         
         
@@ -270,8 +260,7 @@ zoperation OCMToOCM =
   		  , tr\<Zprime>=tr @ [Event reqVel] @ [Event advVel] @[State OCM] 
         , advV\<Zprime> = reqV
         , (xvel,yvel)\<Zprime> = reqV
-        , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None      
+        , triggers\<Zprime> = {reqMOM, reqVel}      
   ]"
 
 
@@ -283,8 +272,7 @@ zoperation HCMToCAM =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM]
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}      
           ]"
 
 zoperation HCMToCAM_1 =
@@ -294,8 +282,7 @@ zoperation HCMToCAM_1 =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM] 
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}       
           ]"
 
 zoperation MOMToCAM =
@@ -305,8 +292,7 @@ zoperation MOMToCAM =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM]
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-       , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}      
           ]"
 
 zoperation MOMToCAM_1 =
@@ -316,8 +302,7 @@ zoperation MOMToCAM_1 =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM]
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}        
           ]"
 
 
@@ -329,8 +314,7 @@ zoperation CAMToCAM =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM]
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}      
           ]"
 
 zoperation CAMToCAM_1 =
@@ -340,8 +324,7 @@ zoperation CAMToCAM_1 =
   		  , tr\<Zprime>=tr @ [Event advVel] @ [State CAM]
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
-        , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqOCM}      
           ]"
 
 zoperation CAMToOCM =
@@ -351,8 +334,7 @@ zoperation CAMToOCM =
   		  , tr\<Zprime>=tr @[Event advVel] @ [State OCM]
         , advV\<Zprime> = ZeroVel
         , (xvel,yvel)\<Zprime> = ZeroVel
-        , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None        
+        , triggers\<Zprime> = {reqMOM, reqVel}     
           ]"
         
 zoperation CAMToOCM_1 =
@@ -360,7 +342,6 @@ zoperation CAMToOCM_1 =
   pre "st= CAM  "
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM]
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}     
           ]"
 
@@ -374,16 +355,12 @@ yvel \<leadsto> 0,
 advV \<leadsto> (0,0),
 st \<leadsto> OCM,
 tr  \<leadsto> [State OCM],   
-trg \<leadsto> None,
  triggers \<leadsto>  {reqOCM}
 
 ]"
 
   
 
-
-def_consts grid ="{0..99}\<times>{0..99}"
-declare grid_def [z_defs]
 
 
 def_consts Velocities = "{(0,1),(0,-2), (2,0),(-4,0)}"
@@ -409,18 +386,6 @@ declare SafeVel_def [z_defs]
 
 
 
-method zpog uses add = 
-  (hoare_wlp add: z_defs add; (clarify)?; 
-   expr_taut; 
-   ((clarsimp del: notI)?; 
-    (((erule conjE | rule conjI | erule disjE | rule impI); (clarsimp del: notI)?)+)?))
-method zpog_full uses add = (zpog add: z_locale_defs add)
-
-
-lemma prod_var_decomp: " get\<^bsub>x\<^esub> s= ( get\<^bsub>var_fst x\<^esub> s,  get\<^bsub>var_snd x\<^esub> s)"
-  by (simp add: lens_defs)
-
-
 subsection \<open> Structural Invariants \<close>
 
 lemma Init_inv [hoare_lemmas]: "Init establishes LRE_Beh_inv"
@@ -434,7 +399,7 @@ lemma OCMToMOM_inv [hoare_lemmas]: "OCMToMOM() preserves LRE_Beh_inv"
  by (metis add_2_eq_Suc' cancel_ab_semigroup_add_class.add_diff_cancel_left' not_add_less1 nth_Cons_0 nth_Cons_Suc nth_append numeral_2_eq_2)+
   
 lemma MOMToOCM_inv [hoare_lemmas]: "MOMToOCM () preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   apply (simp add: nth_append)
   done
 
@@ -442,12 +407,12 @@ lemma MOMToOCM_1_inv [hoare_lemmas]: "MOMToOCM_1 () preserves LRE_Beh_inv"
    by (zpog_full; auto)
 
 lemma MOMToOCM_2_inv [hoare_lemmas]: "MOMToOCM_2 () preserves LRE_Beh_inv"
-    apply (zpog_full add: prod_var_decomp)
+    apply (zpog_full)
    apply (simp add: nth_append)
   done
 
 lemma HCMToOCM_inv [hoare_lemmas]: "HCMToOCM () preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full)
   apply (metis One_nat_def Suc_eq_plus1 cancel_ab_semigroup_add_class.add_diff_cancel_left' not_add_less1 nth_Cons_0 nth_Cons_Suc nth_append)
   done
 
@@ -455,72 +420,63 @@ lemma HCMToOCM_1_inv [hoare_lemmas]: "HCMToOCM_1() preserves LRE_Beh_inv"
   by (zpog_full; auto)
   
 lemma MOMToHCM_inv [hoare_lemmas]: "MOMToHCM() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
 by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
 
 
 lemma HCMToMOM_inv [hoare_lemmas]: "HCMToMOM() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
  by (metis One_nat_def Suc_eq_plus1 Suc_pred cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_less_Suc not_less_eq nth_Cons_0 nth_Cons_Suc nth_append)
 
   
 lemma OCMToOCM_inv [hoare_lemmas]: "OCMToOCM (v) preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
    apply (simp add: nth_append)
   by (simp add: nth_append)
   
   
 lemma HCMToCAM_inv [hoare_lemmas]: "HCMToCAM() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   by (metis One_nat_def Suc_eq_plus1 Suc_pred cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_less_Suc not_less_eq nth_Cons_0 nth_Cons_Suc nth_append)
 
 lemma HCMToCAM_1_inv [hoare_lemmas]: "HCMToCAM_1() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   apply (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
   by (simp add: nth_append)
 
 
 lemma MOMToCAM_inv [hoare_lemmas]: "MOMToCAM() preserves LRE_Beh_inv"
-   apply (zpog_full add: prod_var_decomp)
+   apply (zpog_full )
   by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
 
 lemma MOMToCAM_1_inv [hoare_lemmas]: "MOMToCAM_1() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   apply (simp add: nth_append)
   by (simp add: nth_append)
 
 
 lemma CAMToCAM_inv [hoare_lemmas]: "CAMToCAM () preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
 
 lemma CAMToCAM_1_inv [hoare_lemmas]: "CAMToCAM_1 () preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   apply (simp add: nth_append)
   by (simp add: nth_append)
 
 
 lemma CAMToOCM_inv [hoare_lemmas]: "CAMToOCM () preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
   apply (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
   done
 
 lemma CAMToOCM_1_inv [hoare_lemmas]: "CAMToOCM_1() preserves LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
+  apply (zpog_full )
    apply (metis append_Cons append_Nil append_assoc length_append_singleton nth_append_length)
   done
 
 lemma Move_inv [hoare_lemmas]: "Move() preserves LRE_Beh_inv"
   by (zpog_full; auto)
-
-
-
-method deadlock_free uses invs =
-  (rule deadlock_free_z_machine
-  ,zpog_full
-  ,(simp, auto intro!: hl_zop_event hoare_lemmas invs)
-  ,(simp add: zop_event_is_event_block extchoice_event_block z_defs z_locale_defs wp Bex_Sum_iff,
-    expr_simp add: split_sum_all split_sum_ex))
 
 
 subsection \<open> Safety Requirements \<close>
@@ -533,7 +489,6 @@ yvel \<leadsto> 0,
 advV \<leadsto> (0,0),
 st \<leadsto> initial,
 tr  \<leadsto> [State initial],
-   trg \<leadsto> None,
    triggers \<leadsto>  {reqOCM}
 ]"
   invariant LRE_Beh_inv
@@ -542,30 +497,10 @@ tr  \<leadsto> [State initial],
   
 definition [z_defs]: "LRE_Beh_axioms = (MinSafeDist>0)"
 
-declare [[show_sorts]]
-
-ML \<open> @{term "case x of Inl x \<Rightarrow> fst (f x) | Inr x \<Rightarrow> fst (g x)" }\<close>
-
-lemma [simp]: "fst (case_sum f g x) = (case x of Inl x \<Rightarrow> fst (f x) | Inr x \<Rightarrow> fst (g x))"
-  by (auto simp add: sum.case_eq_if)
-
-
-ML \<open> @{term "case x of Inl (x::'c) \<Rightarrow> fst (f x) | Inr (x::'d + 'e) \<Rightarrow> fst (case x of Inl (x::'d) \<Rightarrow> g x)"}\<close>
-
-lemma [simp]: "fst (if b then x else y) = (if b then (fst x) else (fst y))"
-  by (simp add: if_distrib)
-
-
-
-lemma sum_explode: "(\<forall> x :: unit + 'a . P x) \<longleftrightarrow> (P (Inl ()) \<and> (\<forall> y::'a. P (Inr y)))"
-  by (auto simp add: sum.case_eq_if, metis old.sum.inducts old.unit.exhaust)
-
 lemma LRE_Beh_deadlock_free: "LRE_Beh_axioms \<Longrightarrow> deadlock_free LRE_BehMachine" 
-  unfolding LRE_BehMachine_def
   apply deadlock_free
   by (metis St.exhaust_disc)
- 
- 
+
 
 end
 
