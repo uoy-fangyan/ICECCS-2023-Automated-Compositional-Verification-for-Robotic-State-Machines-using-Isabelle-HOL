@@ -175,7 +175,7 @@ zoperation GasDetectedToReading =
            ]"
 
                 
-zoperation Bypass=
+zoperation Bypass =
   over GasAnalysis
   pre "st = final"
 
@@ -251,20 +251,11 @@ lemma NoGasToReading_inv [hoare_lemmas]: "NoGasToReading() preserves GasAnalysis
   by (metis St.distinct(18) not_less_less_Suc_eq nth_append tag.inject(1))
 
 
-lemma Done_inv [hoare_lemmas]: "Done() preserves GasAnalysis_inv"
+lemma Bypass_inv [hoare_lemmas]: "Bypass() preserves GasAnalysis_inv"
   by (zpog_full; auto)
 
 
 subsection \<open> Safety Requirements \<close>
-
-method zpog uses add = 
-  (hoare_wlp add: z_defs add; (clarify)?; 
-   expr_taut; 
-   ((clarsimp del: notI)?; 
-    (((erule conjE | rule conjI | erule disjE | rule impI); (clarsimp del: notI)?)+)?))
-method zpog_full uses add = (zpog add: z_locale_defs add)
-
-
 
 zexpr R1 is
 "sts=noGas \<and> thr>0 \<longrightarrow>(\<forall>i <(length tr). tr ! i \<noteq> State final)"
@@ -522,30 +513,13 @@ lemma  "NoGasToReading() preserves  R6"
 
 definition [z_defs]: "GasAnalysis_axioms = (thr >0 )"
 
-lemma R7_GasAnalysis_deadlock_free: "GasAnalysis_axioms  \<Longrightarrow> deadlock_free GasAnalysisMachine" 
-  unfolding GasAnalysisMachine_def
-  apply (deadlock_free)
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust_disc sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust_disc sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust_disc sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  apply (simp add: SeqGasSensor_def)
-  apply (metis (mono_tags, lifting) St.exhaust sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  apply (metis (mono_tags, lifting) St.exhaust_disc sum.case(1) sum.case(2))
-  using SeqGasSensor_def apply blast
-  by (metis (mono_tags, lifting) St.exhaust_disc sum.case(1) sum.case(2))
+
+lemma R8_GasAnalysis_deadlock_free: "GasAnalysis_axioms  \<Longrightarrow> deadlock_free GasAnalysisMachine" 
+  apply deadlock_free
+  using SeqGasSensor_def St.exhaust_disc apply auto[1]
+  using SeqGasSensor_def St.exhaust_disc by blast
+
+
+
 
 end
