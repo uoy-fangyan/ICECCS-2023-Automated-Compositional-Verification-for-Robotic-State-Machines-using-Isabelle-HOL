@@ -49,13 +49,13 @@ type_synonym Intensity= "nat"
 record GasSensor =
   c :: Chem
   i :: Intensity
-
-record_default GasSensor
+show_record GasSensor
+(*record_default GasSensor*)
 
 definition Chem :: "Chem set" where "Chem = {1,2,3}"
 consts thr::"Intensity" 
 def_consts thr="2"
-
+declare thr_def [z_defs]
 definition "SeqGasSensor = { [\<lparr> c = 1, i = 0 \<rparr>,\<lparr> c = 2, i = 1 \<rparr>,\<lparr> c = 2, i = 1 \<rparr>,\<lparr> c = 3, i = 3 \<rparr>]}"
 
 
@@ -90,6 +90,10 @@ fun location_aux :: "GasSensor list \<Rightarrow> nat \<Rightarrow> nat" where
 fun location:: " GasSensor list\<Rightarrow> Angle"
   where "location(gs) =(if goreq(intensity(gs), thr) then angle((360 div size gs)*( location_aux gs 0)) else Front)"
 
+fun states :: "(St, Evt) tag list \<Rightarrow>  (St, Evt) tag list " where  "states trace= filter is_State trace"
+
+
+fun events :: "(St, Evt) tag list \<Rightarrow>  (St, Evt) tag list " where "events trace= filter is_Event trace"
 
 subsection \<open> State Space \<close>
 
@@ -120,25 +124,18 @@ zoperation InitialToReading =
          ]"
 
 zoperation ReadingToAnalysis =
-  over GasAnalysis
   params g\<in>"SeqGasSensor"
   pre "st= Reading "
   update "[ sts\<Zprime> =analysis(g)
            ,gs\<Zprime> = g
            ,st\<Zprime>= Analysis
            ,tr\<Zprime>=tr @ [Event gas, State Analysis]
-           ,triggers\<Zprime>={}
-           ]"
-
-
-
+           ,triggers\<Zprime>={}]"
 zoperation AnalysisToNoGas =
-  over GasAnalysis
   pre "st= Analysis \<and> sts=(noGas)"
   update "[ st\<Zprime>= NoGas
            ,tr\<Zprime>=tr @ [Event resume, State NoGas]
-           ,triggers\<Zprime>={}
-          ]"
+           ,triggers\<Zprime>={}]"
         
 zoperation NoGasToReading =
   over GasAnalysis
@@ -224,8 +221,8 @@ lemma AnalysisToGasDetected_inv [hoare_lemmas]: "AnalysisToGasDetected() preserv
 lemma GasDetectedToFinal_inv [hoare_lemmas]: "GasDetectedToFinal() preserves GasAnalysis_inv"
   apply zpog_full
   apply (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
-  apply (metis St.distinct(23) not_less_less_Suc_eq nth_append nth_append_length tag.distinct(1) tag.inject(1))
-  by (metis St.distinct(23) Suc_le_eq diff_Suc_Suc diff_diff_cancel less_SucE minus_nat.diff_0 nat_less_le nth_Cons_0 nth_Cons_Suc nth_append tag.distinct(1) tag.inject(1) zero_less_Suc)
+ by (metis St.distinct(23) not_less_less_Suc_eq nth_append nth_append_length tag.distinct(1) tag.inject(1))
+ 
 
 
 
@@ -257,39 +254,33 @@ lemma Bypass_inv [hoare_lemmas]: "Bypass() preserves GasAnalysis_inv"
 
 subsection \<open> Safety Requirements \<close>
 
-zexpr R1 is
-"sts=noGas \<and> thr>0 \<longrightarrow>(\<forall>i <(length tr). tr ! i \<noteq> State final)"
+zexpr Req1 is
+"sts=noGas\<longrightarrow>(\<forall>i <(length tr). tr ! i \<noteq> State final)"
 
-lemma "Init establishes R1 "
+lemma "Init establishes Req1 "
   by zpog_full
 
-lemma "InitialToReading() preserves R1"
+lemma "InitialToReading() preserves Req1"
   apply zpog_full
   by (metis St.distinct(29) less_SucE nth_append nth_append_length tag.inject(1))
 
-lemma "GasDetectedToFinal() preserves R1 under GasAnalysis_inv"
+lemma "GasDetectedToFinal() preserves Req1 under GasAnalysis_inv"
   by zpog_full
 
-lemma "AnalysisToGasDetected() preserves R1 under GasAnalysis_inv"
+lemma "AnalysisToGasDetected() preserves Req1 under GasAnalysis_inv"
  by zpog_full
 
 lemma  "AnalysisToNoGas() preserves  R1"
-  apply zpog_full
-  by (metis One_nat_def St.distinct(18) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.distinct(1) tag.inject(1))
+ by zpog_full
 
 lemma  "NoGasToReading() preserves R1"
-  apply zpog_full
-  by (simp add: nth_append)
+ by zpog_full
 
 lemma  "GasDetectedToReading() preserves   R1 "
-  apply zpog_full
-  by (metis One_nat_def St.distinct(30) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.distinct(1) tag.inject(1)) 
+ by zpog_full 
 
 lemma  "ReadingToAnalysis l preserves  R1 under GasAnalysis_inv  "
-  apply zpog_full
-  apply (metis (no_types, opaque_lifting) One_nat_def St.distinct(27) St.distinct(29) Suc_eq_plus1 Suc_lessI cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_is_0_eq' less_Suc_eq_le not_less_eq nth_Cons_0 nth_Cons_Suc nth_append tag.distinct(1) tag.inject(1))
-  apply (metis (mono_tags, lifting) One_nat_def St.distinct_disc(28) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.distinct(1) tag.inject(1)) 
-  done
+   by zpog_full
 
 
 
@@ -317,8 +308,7 @@ lemma  "AnalysisToGasDetected()   preserves  R2 under GasAnalysis_inv"
 
 lemma "GasDetectedToFinal() preserves R2 under GasAnalysis_inv" 
   apply zpog_full
-  apply (metis St.distinct(24) cancel_comm_monoid_add_class.diff_zero diff_Suc_Suc less_antisym nth_append nth_append_length tag.distinct(1) tag.inject(1))
-  by (metis less_2_cases_iff less_numeral_extra(3) thr_def)
+  by (metis St.distinct(24) cancel_comm_monoid_add_class.diff_zero diff_Suc_Suc less_antisym nth_append nth_append_length tag.distinct(1) tag.inject(1))
 
 
 lemma  "GasDetectedToReading() preserves   R2 under GasAnalysis_inv "
@@ -338,10 +328,98 @@ lemma  "NoGasToReading() preserves  R2 under GasAnalysis_inv "
   apply (metis St.distinct(18) St.distinct(30) less_Suc_eq nth_append nth_append_length tag.inject(1))
   by (metis St.distinct(18) St.distinct(30) less_Suc_eq nth_append nth_append_length tag.inject(1))
 
+zexpr R2' is
+"tr !  (length tr-1) = State final   \<longrightarrow> tr ! (length tr-2) = Event stop "
+
+
+lemma "Init establishes R2'"
+  by (zpog_full; auto)
+
+lemma  "InitialToReading() preserves  R2' under GasAnalysis_inv"
+  by zpog_full
+
+ lemma  "AnalysisToNoGas() preserves  R2' under GasAnalysis_inv"
+  apply zpog_full
+  by (smt (verit, del_insts) One_nat_def St.distinct(18) St.distinct_disc(27) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+
+
+lemma  "AnalysisToGasDetected()   preserves  R2' under GasAnalysis_inv"
+  by zpog_full
+
+
+lemma "GasDetectedToFinal() preserves R2' under GasAnalysis_inv" 
+  by zpog_full
+
+
+lemma  "GasDetectedToReading() preserves   R2' under GasAnalysis_inv "
+  apply zpog_full
+  apply (simp add: nth_append)
+  by (metis One_nat_def St.distinct_disc(29) Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus tag.inject(1))
+ 
+
+
+lemma  "ReadingToAnalysis l preserves  R2' under GasAnalysis_inv"
+  apply zpog_full
+  apply (smt (verit, best) One_nat_def St.distinct(30) St.distinct_disc(27) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+  by (smt (verit, best) One_nat_def St.distinct(30) St.distinct_disc(28) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+
+
+lemma  "NoGasToReading() preserves  R2' under GasAnalysis_inv "
+  by zpog_full
+
+
+
+
+zexpr R2'' is 
+"  \<forall> i <(length tr). tr! i = State final   \<longrightarrow> tr ! (i-1) = Event stop "
+
+
+lemma "Init establishes R2''"
+  by (zpog_full; auto)
+
+lemma  "InitialToReading() preserves  R2'' under GasAnalysis_inv"
+  apply zpog_full
+  apply (metis St.distinct(30) St.simps(10) less_Suc_eq nth_append nth_append_length tag.inject(1))
+  by (metis St.distinct(30) St.simps(10) less_Suc_eq nth_append nth_append_length tag.inject(1))
+
+ lemma  "AnalysisToNoGas() preserves  R2'' under GasAnalysis_inv"
+  apply zpog_full
+  by (smt (verit, del_insts) One_nat_def St.distinct(18) St.distinct_disc(27) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+
+
+lemma  "AnalysisToGasDetected()   preserves  R2'' under GasAnalysis_inv"
+  apply zpog_full
+  by (metis St.distinct(24) St.distinct_disc(28) less_Suc_eq nth_append nth_append_length tag.inject(1))
+
+
+lemma "GasDetectedToFinal() preserves R2'' under GasAnalysis_inv" 
+  apply zpog_full
+  by (metis St.distinct(24) cancel_comm_monoid_add_class.diff_zero diff_Suc_Suc less_antisym nth_append nth_append_length tag.distinct(1) tag.inject(1))
+
+
+lemma  "GasDetectedToReading() preserves   R2'' under GasAnalysis_inv "
+  apply zpog_full
+  apply (smt (verit, best) St.distinct(24) St.distinct(30) Suc_diff_Suc diff_Suc_1 diff_Suc_Suc less_SucE minus_gr_zero_iff nth_Cons_0 nth_Cons_pos nth_append tag.distinct(1) tag.inject(1))
+  by (smt (verit, best) One_nat_def St.distinct(24) St.distinct(30) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+
+
+lemma  "ReadingToAnalysis l preserves  R2'' under GasAnalysis_inv"
+  apply zpog_full
+  apply (smt (verit, best) One_nat_def St.distinct(30) St.distinct_disc(27) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+  by (smt (verit, best) One_nat_def St.distinct(30) St.distinct_disc(28) Suc_eq_plus1 less_SucE nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus tag.disc(1) tag.disc(2) tag.inject(1))
+
+
+lemma  "NoGasToReading() preserves  R2'' under GasAnalysis_inv "
+  apply zpog_full
+  apply (metis St.distinct(18) St.distinct(30) less_Suc_eq nth_append nth_append_length tag.inject(1))
+  by (metis St.distinct(18) St.distinct(30) less_Suc_eq nth_append nth_append_length tag.inject(1))
+
+
+
 
 
 zexpr R3
-is "length tr>1 \<longrightarrow> (\<forall>i<length tr-1.  tr ! (i+1) = State Analysis \<longrightarrow>  tr ! i = Event gas)" 
+is "\<forall>i<length tr-1.  tr ! (i+1) = State Analysis \<longrightarrow>  tr ! i = Event gas" 
 
 
 lemma "Init establishes R3"
@@ -356,7 +434,8 @@ lemma  "InitialToReading() preserves  R3 under GasAnalysis_inv"
 lemma  "ReadingToAnalysis l preserves  R3 under GasAnalysis_inv "
   apply zpog_full
   apply (smt (verit, ccfv_SIG) Suc_pred less_2_cases not_less_eq not_less_iff_gr_or_eq nth_append nth_append_length numeral_2_eq_2 tag.distinct(1))
-  by (metis (no_types, lifting) Suc_lessI Suc_pred length_greater_0_conv less_2_cases less_SucE nth_append nth_append_length numeral_2_eq_2 tag.distinct(1))
+  by (metis One_nat_def Suc_less_eq add.commute less_SucE less_diff_conv nth_append nth_append_length plus_1_eq_Suc tag.distinct(1))
+
 
 
 
@@ -368,7 +447,7 @@ lemma  "AnalysisToNoGas() preserves  R3  under GasAnalysis_inv"
 
 lemma  "AnalysisToGasDetected()   preserves  R3 under GasAnalysis_inv"
   apply zpog_full
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.simps(20) Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length tag.inject(1))
+  by (smt (verit, del_insts) Nat.lessE One_nat_def St.distinct_disc(19) Suc_leI diff_Suc_1 diff_is_0_eq nth_Cons_0 nth_append nth_append_length tag.inject(1))
 
 
 lemma  "GasDetectedToReading() preserves  R3"
@@ -378,7 +457,7 @@ lemma  "GasDetectedToReading() preserves  R3"
 
 lemma  "NoGasToReading() preserves  R3"
   apply zpog_full
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.simps(26) Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length tag.inject(1))
+  by (metis Nat.lessE One_nat_def St.distinct(26) Suc_lessI diff_add_inverse nth_append nth_append_length plus_1_eq_Suc tag.inject(1))
 
 
 
@@ -389,7 +468,7 @@ lemma "GasDetectedToFinal() preserves R3"
 
 
 zexpr R4
-is "(length tr)>1\<longrightarrow> ( \<forall> i <(length tr)-1  . tr ! i = Event turn  \<longrightarrow> tr ! (i+1) = State Reading )"
+is " \<forall> i <(length tr)-1  . tr ! i = Event turn  \<longrightarrow> tr ! (i+1) = State Reading "
 
 
 lemma "Init establishes R4"
@@ -411,7 +490,7 @@ lemma  "AnalysisToNoGas() preserves  R4 under GasAnalysis_inv"
 
 lemma  "AnalysisToGasDetected()   preserves  R4  under GasAnalysis_inv "
   apply zpog_full
-  by (metis (no_types, lifting) Nat.lessE One_nat_def diff_Suc_1 less_Suc0 not_less_eq nth_append tag.disc(1) tag.disc(2))
+  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_less_eq diff_Suc_1 nth_append tag.disc(1) tag.disc(2))
  
 
 lemma  "GasDetectedToReading() preserves   R4 under GasAnalysis_inv"
@@ -428,13 +507,13 @@ lemma  "NoGasToReading() preserves  R4 under GasAnalysis_inv"
 
 lemma "GasDetectedToFinal() preserves R4 under GasAnalysis_inv" 
   apply zpog_full
-  apply (smt (verit) Evt.simps(10) Suc_pred less_Suc_eq not_less_eq nth_append nth_append_length tag.disc(1) tag.disc(2) tag.inject(2) zero_less_Suc)
-  using Zero_not_Suc numerals(2) thr_def by presburger
+ by (smt (verit) Evt.simps(10) Suc_pred less_Suc_eq not_less_eq nth_append nth_append_length tag.disc(1) tag.disc(2) tag.inject(2) zero_less_Suc)
+
 
 
 
 zexpr R5 is 
-"length(filter is_State tr)>1 \<longrightarrow> (\<forall>i< (length(filter is_State tr)-1).  (filter is_State tr) ! i = State Reading \<longrightarrow> ( (filter is_State tr) ! (i+1)) =  State Analysis)"
+"\<forall>i< (length(states tr)-1).  (states tr) ! i = State Reading \<longrightarrow> ( (states tr) ! (i+1)) =  State Analysis"
 
 
 lemma "Init establishes R5"
@@ -442,43 +521,43 @@ lemma "Init establishes R5"
 
 lemma  "InitialToReading() preserves  R5 under GasAnalysis_inv"
 apply zpog_full
-  apply (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(7) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(7) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
+  apply (metis One_nat_def St.distinct(8) Suc_eq_plus1 Suc_lessI diff_Suc_1 less_diff_conv nth_append tag.inject(1))
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(7) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
+
 
 lemma  "AnalysisToNoGas() preserves  R5 under GasAnalysis_inv "
   apply zpog_full
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.simps(26) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(26) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
+
 
 lemma  "AnalysisToGasDetected()   preserves  R5 under GasAnalysis_inv "
   apply zpog_full
-  by (metis (no_types, lifting) One_nat_def St.distinct(25) Suc_eq_plus1 Suc_lessI diff_Suc_1 diff_is_0_eq less_diff_conv less_nat_zero_code linorder_not_less nth_append tag.inject(1))
+  by (metis One_nat_def St.distinct(26) Suc_eq_plus1 Suc_lessI diff_Suc_1 less_diff_conv nth_append tag.inject(1))
 
 
 lemma "GasDetectedToFinal() preserves R5  under GasAnalysis_inv  " 
   apply zpog_full
-  apply (metis (no_types, lifting) One_nat_def St.distinct(21) Suc_eq_plus1 Suc_lessI diff_Suc_1 diff_is_0_eq gr_implies_not_zero less_diff_conv linorder_not_less nth_append tag.inject(1))
-  by (metis less_2_cases_iff less_numeral_extra(3) thr_def)
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct_disc(21) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
 
 lemma  "GasDetectedToReading() preserves   R5 under GasAnalysis_inv  "
   apply zpog_full
-  apply (metis (no_types, lifting) One_nat_def St.distinct(21) Suc_eq_plus1 Suc_lessI diff_Suc_1 diff_is_0_eq less_diff_conv linorder_not_le not_less_zero nth_append tag.inject(1))
-  by (metis (no_types, lifting) One_nat_def St.distinct(21) Suc_eq_plus1 Suc_lessI diff_Suc_1 diff_is_0_eq' less_diff_conv less_zeroE linorder_not_le nth_append tag.inject(1))
+  apply (metis One_nat_def St.distinct(22) Suc_eq_plus1 Suc_lessI diff_Suc_1 less_diff_conv nth_append tag.inject(1))
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(22) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
 
 
 lemma  "ReadingToAnalysis l preserves  R5 under GasAnalysis_inv  "
   apply zpog_full
-  apply (metis (no_types, lifting) One_nat_def Suc_eq_plus1 Suc_lessI diff_is_0_eq less_diff_conv less_nat_zero_code linorder_not_less nth_append nth_append_length)
-  by (metis (no_types, lifting) One_nat_def Suc_eq_plus1 Suc_lessI diff_is_0_eq less_diff_conv less_zeroE linorder_not_le nth_append nth_append_length)
+  apply (simp add: nth_append)
+  by (metis One_nat_def Suc_eq_plus1 Suc_lessI less_diff_conv nth_append nth_append_length)
   
 lemma  "NoGasToReading() preserves  R5 under GasAnalysis_inv "
   apply zpog_full
-  apply (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(15) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(15) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
-  
+  apply (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(15) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
+  by (metis One_nat_def St.distinct(16) Suc_eq_plus1 Suc_lessI diff_Suc_1 less_diff_conv nth_append tag.inject(1))
 
 
 zexpr R6
-is "  thr>0 \<and> intensity(gs)\<ge>thr  \<longrightarrow>   sts=gasD"
+is "   intensity(gs) \<ge>thr  \<longrightarrow> sts=gasD"
 
 
 lemma "Init establishes R6"
@@ -510,16 +589,10 @@ lemma  "NoGasToReading() preserves  R6"
   by (zpog_full; auto)
 
 
-
-definition [z_defs]: "GasAnalysis_axioms = (thr >0 )"
-
-
-lemma R8_GasAnalysis_deadlock_free: "GasAnalysis_axioms  \<Longrightarrow> deadlock_free GasAnalysisMachine" 
+lemma R8_GasAnalysis_deadlock_free: "deadlock_free GasAnalysisMachine" 
   apply deadlock_free
   using SeqGasSensor_def St.exhaust_disc apply auto[1]
   using SeqGasSensor_def St.exhaust_disc by blast
-
-
 
 
 end
