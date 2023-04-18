@@ -34,7 +34,7 @@ enumtype Evt = advVel | reqHCM | reqOCM | reqMOM | endTask | reqVel
 
 definition "Evt = {advVel, reqHCM, reqOCM, reqMOM, endTask, reqVel}"
 
-type_synonym coord="integer\<times>integer"
+type_synonym coord="real\<times>real"
 
 record Obstacle =
   obspos :: coord
@@ -44,18 +44,18 @@ consts Obsts :: " coord list"
 
 consts Positions::"(coord) set"
 
-consts Velocities:: "(integer\<times>integer) set"
-consts ReqV:: "(integer\<times>integer) set"
+consts Velocities:: "(real\<times>real) set"
+consts ReqV:: "(real\<times>real) set"
 
-consts HCMVel:: "integer"
+consts HCMVel:: "real"
 
-consts MOMVel:: "integer"
+consts MOMVel:: "real"
 
-consts MinSafeDist :: "integer"
+consts MinSafeDist :: "real"
 
 consts Opez_min:: "coord"
 consts Opez_max:: "coord"
-consts SafeVel :: "integer"
+consts SafeVel :: "real"
 consts ZeroVel:: "coord"
 
 text \<open> function definition \<close>
@@ -63,10 +63,10 @@ text \<open> function definition \<close>
 fun inOPEZ:: "coord\<Rightarrow> bool"
   where "inOPEZ (x,y) = ( x\<ge> fst Opez_min \<and> x< fst Opez_max \<and> y\<ge>snd Opez_min \<and> y< snd Opez_max)"
 
-fun single_dist:: " coord \<times> coord  \<Rightarrow> integer"
+fun single_dist:: " coord \<times> coord  \<Rightarrow> real"
   where "single_dist((x,y), (m,n)) =(x-m)^2+ (y-n)^2"
 
-fun dist:: " coord \<times> (coord list) \<Rightarrow> integer"
+fun dist:: " coord \<times> (coord list) \<Rightarrow> real"
   where 
 "dist((x,y),[]) = 200^2+ 200^2" |
  " dist((x,y), g#gs) =( if  single_dist((x,y),g) \<le> dist ((x,y),gs) then single_dist((x,y),g) else dist ((x,y),gs))"
@@ -77,19 +77,19 @@ fun obst_index:: "coord  \<times> (coord list) \<Rightarrow> nat"
  "obst_index ((x,y), g#gs)= (if single_dist ((x,y),g) = dist ((x,y),g#gs) then 0 else  (obst_index ((x,y), gs)+1))"
 
 
-fun abslt:: "integer\<Rightarrow> integer"
+fun abslt:: "real\<Rightarrow> real"
   where "abslt(x) = (if x\<ge>0 then x else -x)"
 
-fun closestObs_xpos :: "coord \<times> (coord list) \<Rightarrow> integer"
+fun closestObs_xpos :: "coord \<times> (coord list) \<Rightarrow> real"
   where "closestObs_xpos((xp,yp),[]) = 1000000"|
         "closestObs_xpos((xp,yp),g#gs) = fst ((g#gs) ! obst_index((xp,yp), g#gs))"
 
-fun closestObs_ypos :: "coord \<times> (coord list) \<Rightarrow> integer"
+fun closestObs_ypos :: "coord \<times> (coord list) \<Rightarrow> real"
   where "closestObs_ypos((xp,yp),[]) = 1000000"|
         "closestObs_ypos((xp,yp),g#gs) = snd ((g#gs) ! obst_index((xp,yp), g#gs))"
 
 
-fun CDA :: " coord \<times> (coord list)\<times> (integer \<times> integer) \<Rightarrow> integer"
+fun CDA :: " coord \<times> (coord list)\<times> (real \<times> real) \<Rightarrow> real"
   where "CDA((xp,yp),[], (xv,yv)) = (10+MinSafeDist+5)^2" |
 "CDA ((xp,yp), g#gs, (xv,yv)) = 
 (if xv\<noteq>0 \<and> yv=0 
@@ -107,11 +107,11 @@ else
 )"
 
 
-fun maneuv :: "integer\<times> integer \<Rightarrow> integer\<times> integer"
+fun maneuv :: "real\<times> real \<Rightarrow> real\<times> real"
   where "maneuv(x,y) = (y,-x)"
 
 
-fun setVel :: "(integer \<times> integer) \<times> integer   \<Rightarrow>   (integer \<times> integer) " 
+fun setVel :: "(real \<times> real) \<times> real   \<Rightarrow>   (real \<times> real) " 
   where
  "setVel((xv, yv), setpoint) =
 (if xv=0 
@@ -129,15 +129,20 @@ else
 
 subsection \<open> State Space \<close>
 
+instantiation real :: default
+begin
+definition "default_real = (0::real)"
+instance ..
+end
+
 zstore LRE_Beh =
   pos:: "coord"
-  xvel :: "integer"
-  yvel :: "integer"
-  reqV::" integer\<times> integer"
-  advV::" integer\<times> integer"
+  xvel :: "real"
+  yvel :: "real"
+  reqV:: "real \<times> real"
+  advV::"real \<times> real"
   st::"St"
   tr :: "(St, Evt)tag list"
-  trg:: "Evt option"
   triggers:: "Evt set"
   where inv: 
         "wf_rcstore tr st None" 
@@ -153,13 +158,6 @@ update "[
         ]"
 
 
-zoperation Trigger= 
-params trigger \<in> "triggers"
-pre "triggers \<noteq> {}"
-update "[
-        trg\<Zprime>= Some trigger
-        ]"
-
 
 zoperation InitialToOCM =
   over LRE_Beh
@@ -167,7 +165,6 @@ zoperation InitialToOCM =
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM]
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
 
 zoperation OCMToMOM =
@@ -177,7 +174,6 @@ zoperation OCMToMOM =
   		  , tr\<Zprime>=tr  @ [Event reqMOM]  @ [Event advVel]@ [State MOM] 
         , advV\<Zprime> = setVel((xvel, yvel), MOMVel)
         , (xvel,yvel)\<Zprime> = setVel((xvel, yvel), MOMVel)
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {endTask, reqOCM}        
           ]"
 
@@ -187,7 +183,6 @@ zoperation MOMToOCM =
   pre "st= MOM"
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM] 
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}
           ]"
 
@@ -197,7 +192,6 @@ zoperation MOMToOCM_1 =
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM]
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
 
         
@@ -209,7 +203,6 @@ zoperation MOMToOCM_2 =
         , advV\<Zprime> = ZeroVel
         , (xvel,yvel)\<Zprime> = ZeroVel
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
 
 zoperation HCMToOCM =
@@ -217,7 +210,6 @@ zoperation HCMToOCM =
   pre "st= HCM "
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM] 
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}
           ]"
 
@@ -228,7 +220,6 @@ zoperation HCMToOCM_1 =
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [State OCM] 
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
 
 zoperation MOMToHCM =
@@ -239,7 +230,6 @@ zoperation MOMToHCM =
         , advV\<Zprime> = setVel((xvel, yvel), HCMVel)
         , (xvel,yvel)\<Zprime> = setVel((xvel, yvel), HCMVel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 
@@ -252,7 +242,6 @@ zoperation HCMToMOM =
         , advV\<Zprime> = setVel((xvel, yvel), MOMVel)
         , (xvel,yvel)\<Zprime> =  setVel((xvel, yvel), MOMVel)
         , triggers\<Zprime> = { endTask, reqOCM} 
-        , trg\<Zprime> = None
           ]"
         
         
@@ -266,7 +255,6 @@ zoperation OCMToOCM =
         , advV\<Zprime> = reqV_input  
         , (xvel,yvel)\<Zprime> = reqV_input
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
   ]"
 
 
@@ -279,7 +267,6 @@ zoperation HCMToCAM =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 zoperation HCMToCAM_1 =
@@ -290,7 +277,6 @@ zoperation HCMToCAM_1 =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 zoperation MOMToCAM =
@@ -301,7 +287,6 @@ zoperation MOMToCAM =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-       , trg\<Zprime> = None
           ]"
 
 zoperation MOMToCAM_1 =
@@ -312,7 +297,6 @@ zoperation MOMToCAM_1 =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 
@@ -325,7 +309,6 @@ zoperation CAMToCAM =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 zoperation CAMToCAM_1 =
@@ -336,7 +319,6 @@ zoperation CAMToCAM_1 =
         , advV\<Zprime> = maneuv(xvel, yvel)
         , (xvel,yvel)\<Zprime> = maneuv(xvel, yvel)
         , triggers\<Zprime> = {reqOCM}
-        , trg\<Zprime> = None
           ]"
 
 zoperation CAMToOCM =
@@ -347,7 +329,6 @@ zoperation CAMToOCM =
         , advV\<Zprime> = ZeroVel
         , (xvel,yvel)\<Zprime> = ZeroVel
         , triggers\<Zprime> = {reqMOM, reqVel}
-        , trg\<Zprime> = None
           ]"
         
 zoperation CAMToOCM_1 =
@@ -355,7 +336,6 @@ zoperation CAMToOCM_1 =
   pre "st= CAM "
   update "[ st\<Zprime>= OCM
   		  , tr\<Zprime>=tr @ [Event reqOCM] @ [State OCM]
-        , trg\<Zprime> = None
         , triggers\<Zprime> = {reqMOM, reqVel}
           ]"
 
@@ -370,7 +350,6 @@ definition Init :: "LRE_Beh subst" where
 reqV\<leadsto> (0,0),
    st \<leadsto> initial,
    tr  \<leadsto> [State initial],
-   trg \<leadsto> None,
    triggers \<leadsto>  {reqOCM}
    ]"
 
@@ -383,17 +362,17 @@ declare Velocities_def [z_defs]
 def_consts MinSafeDist= "2"
 declare MinSafeDist_def [z_defs]
 
-def_consts HCMVel = "3"
+def_consts HCMVel = "0.3"
 declare HCMVel_def [z_defs]
 
-def_consts MOMVel = "5"
+def_consts MOMVel = "0.5"
 declare MOMVel_def [z_defs]
 
 
 def_consts ZeroVel = "(0,0)"
 declare ZeroVel_def [z_defs]
 
-def_consts SafeVel = "3"
+def_consts SafeVel = "0.3"
 declare SafeVel_def [z_defs]
 
 
@@ -442,20 +421,19 @@ lemma MOMToOCM_2_inv [hoare_lemmas]: "MOMToOCM_2 () preserves LRE_Beh_inv"
   
 lemma HCMToOCM_inv [hoare_lemmas]: "HCMToOCM () preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 cancel_ab_semigroup_add_class.add_diff_cancel_left' not_add_less1 nth_Cons_0 nth_Cons_Suc nth_append)
-
+  by (metis One_nat_def Suc_eq_plus1 Suc_n_not_le_n cancel_ab_semigroup_add_class.add_diff_cancel_left' nat_less_le nth_Cons_0 nth_Cons_Suc nth_append)
 
 lemma HCMToOCM_1_inv [hoare_lemmas]: "HCMToOCM_1() preserves LRE_Beh_inv"
   by (zpog_full; auto)
   
 lemma MOMToHCM_inv [hoare_lemmas]: "MOMToHCM() preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_mono Suc_n_not_le_n diff_Suc_1 diff_diff_cancel length_greater_0_conv nth_Cons_0 nth_Cons_pos nth_append order_le_less zero_less_one)
+  by (metis append.assoc append_Cons append_Nil length_append_singleton nth_append_length)
+
 
 lemma HCMToMOM_inv [hoare_lemmas]: "HCMToMOM() preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
-
+  by (metis One_nat_def add_diff_cancel_right' not_add_less2 nth_Cons_0 nth_Cons_Suc nth_append plus_1_eq_Suc)
 
   
 lemma OCMToOCM_inv [hoare_lemmas]: "OCMToOCM (v) preserves LRE_Beh_inv"
@@ -466,17 +444,16 @@ lemma OCMToOCM_inv [hoare_lemmas]: "OCMToOCM (v) preserves LRE_Beh_inv"
   
 lemma HCMToCAM_inv [hoare_lemmas]: "HCMToCAM() preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  by (metis append.left_neutral append_Cons append_assoc length_append_singleton nth_append_length)
 
 lemma HCMToCAM_1_inv [hoare_lemmas]: "HCMToCAM_1() preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  apply (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  apply (simp add: nth_append)
   by (simp add: nth_append)
-
 
 lemma MOMToCAM_inv [hoare_lemmas]: "MOMToCAM() preserves LRE_Beh_inv"
    apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  by (simp add: nth_append)
 
 lemma MOMToCAM_1_inv [hoare_lemmas]: "MOMToCAM_1() preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
@@ -486,7 +463,7 @@ lemma MOMToCAM_1_inv [hoare_lemmas]: "MOMToCAM_1() preserves LRE_Beh_inv"
 
 lemma CAMToCAM_inv [hoare_lemmas]: "CAMToCAM () preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  by (metis One_nat_def add_diff_cancel_right' not_add_less2 nth_Cons_0 nth_Cons_Suc nth_append plus_1_eq_Suc)
 
 lemma CAMToCAM_1_inv [hoare_lemmas]: "CAMToCAM_1 () preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
@@ -496,7 +473,8 @@ lemma CAMToCAM_1_inv [hoare_lemmas]: "CAMToCAM_1 () preserves LRE_Beh_inv"
 
 lemma CAMToOCM_inv [hoare_lemmas]: "CAMToOCM () preserves LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  by (simp add: nth_append)
+
 
   
 lemma CAMToOCM_1_inv [hoare_lemmas]: "CAMToOCM_1() preserves LRE_Beh_inv"
@@ -512,199 +490,172 @@ subsection \<open> Safety Requirements \<close>
 
 
 zexpr R1 is
-"length (filter is_State tr) > 1 \<longrightarrow> (\<forall> i < length (filter is_State tr)-1 . (filter is_State tr) ! i= State CAM \<longrightarrow> (filter is_State tr) ! (i+1) \<in> {State OCM, State CAM})"
+"\<forall> i < length (filter is_State tr)-1 . (filter is_State tr) ! i= State CAM \<longrightarrow> (filter is_State tr) ! (i+1) \<in> {State OCM, State CAM}"
 lemma "Init establishes R1"
   by zpog_full
 
 lemma  "InitialToOCM () preserves R1  under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
 
  
 lemma "OCMToMOM() preserves  R1 under LRE_Beh_inv"
  apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct_disc(5) Suc_lessI diff_Suc_1 length_greater_0_conv less_Suc0 nth_append tag.inject(1)) 
-
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct_disc(6) Suc_lessI diff_Suc_1 nth_append tag.inject(1))
   
 lemma  "MOMToOCM() preserves  R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, opaque_lifting) Nat.lessE One_nat_def St.distinct_disc(12) Suc_lessI diff_Suc_1 nth_append tag.inject(1))
 
 
  
 lemma  "HCMToOCM () preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, opaque_lifting) Nat.lessE One_nat_def St.distinct_disc(15) Suc_lessI diff_Suc_1 nth_append tag.inject(1))
 
 
 lemma  "MOMToHCM() preserves  R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(12) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
+  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct_disc(11) Suc_less_eq diff_Suc_1 nth_append tag.inject(1))
 
 
 lemma  "MOMToOCM_1() preserves  R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
   apply (simp add: nth_append)
-  apply (smt (verit) Suc_lessI Suc_less_eq Suc_pred length_greater_0_conv less_Suc0)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  apply (metis Suc_less_eq Suc_pred length_greater_0_conv list.size(3) not_less_zero)
+  by (metis (no_types, opaque_lifting) St.simps(12) Suc_lessI add.right_neutral add_Suc_right cancel_comm_monoid_add_class.diff_zero diff_Suc_Suc less_diff_conv nth_append tag.inject(1))
 
  
     
 lemma  "HCMToOCM_1() preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  apply (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  apply (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
 
   
 lemma  "HCMToMOM() preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct_disc(15) diff_Suc_1 less_Suc0 not_less_eq nth_append tag.inject(1))
+  by (smt (verit, ccfv_threshold) Nat.lessE St.simps(16) Suc_less_eq Suc_pred diff_Suc_1 length_greater_0_conv list.size(3) not_less_zero nth_append tag.inject(1))
 
   
 
   
 lemma  "OCMToOCM (v) preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, opaque_lifting) Nat.lessE One_nat_def St.simps(6) Suc_lessI diff_Suc_1 nth_append tag.inject(1))
+
 
  
 
 lemma  "MOMToOCM_2() preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, opaque_lifting) Nat.lessE One_nat_def St.simps(12) Suc_lessI diff_Suc_1 nth_append tag.inject(1))
+
 
 
 lemma  "HCMToCAM() preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
+
 
 
 lemma  "MOMToCAM() preserves  R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
+
 
 
 lemma  "CAMToOCM () preserves R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
+
 
 lemma  "CAMToOCM_1() preserves  R1 under LRE_Beh_inv"
   apply (zpog_full add: prod_var_decomp)
-  by (metis (no_types, lifting) Nat.lessE One_nat_def Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length)
+  by (metis (no_types, lifting) Nat.lessE Suc_less_eq Suc_pred nth_append nth_append_length zero_less_Suc)
 
 
-lemma "Move() preserves R1 under LRE_Beh_inv"
-  by (zpog_full; auto)
-
-lemma  "Trigger(t) preserves R1 under LRE_Beh_inv"
-  by (zpog_full; auto)
 
 
-zexpr R2 is
- "length tr>1\<longrightarrow> (\<forall>i< (length tr)-1. tr ! (i+1) = State MOM \<longrightarrow> tr ! i = Event advVel ) "
 
-lemma  "Init establishes R2 "
+zexpr R2  is 
+"st = MOM \<longrightarrow> (tr ! (length tr-2) = Event advVel \<and> (xvel^2 + yvel^2 < 0.36) \<and> (xvel^2 + yvel^2 >0.16) ) "
+
+lemma  "Init establishes  R2  "
   by  zpog_full
 
-lemma  "InitialToOCM () preserves R2  under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, best) St.distinct(1) St.distinct(13) Suc_pred diff_is_0_eq' less_Suc_eq less_Suc_eq_0_disj less_Suc_eq_le not_less_eq nth_append nth_append_length tag.inject(1))
-  
-  
-lemma "OCMToMOM() preserves  R2 under LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
-  by (smt (verit, del_insts) Nat.lessE One_nat_def Suc_eq_plus1 add_Suc_right diff_Suc_1 less_2_cases not_less_eq nth_Cons_0 nth_Cons_Suc nth_append nth_append_length_plus numeral_2_eq_2 tag.distinct(1))
-
+lemma  "InitialToOCM () preserves  R2  under LRE_Beh_inv"
+  by  zpog_full
   
 
-lemma  "MOMToOCM() preserves  R2 under LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
-  by (smt (verit, ccfv_threshold) St.distinct(2) Suc_diff_1 Suc_eq_plus1 Suc_less_SucD diff_Suc_1 gr_implies_not_zero less_SucE less_SucI less_Suc_eq_0_disj linorder_neqE_nat minus_gr_zero_iff nth_Cons_0 nth_Cons_pos nth_append nth_append_length_plus tag.distinct(1) tag.inject(1))
-
-
-lemma  "MOMToOCM_1() preserves  R2 under LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
-  apply (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(2) Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length tag.inject(1))
-  by (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(2) Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length tag.inject(1))
-  
-  
-lemma  "MOMToOCM_2() preserves  R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (z3) Suc_le_eq Suc_lessI Suc_pred add_2_eq_Suc' cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_Suc_1 less_2_cases less_Suc_eq less_imp_le_nat nat_arith.suc1 nat_neq_iff nth_Cons_0 nth_Cons_Suc nth_append tag.distinct(1))
-  
-lemma  "HCMToOCM () preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, ccfv_SIG) St.distinct(2) Suc_diff_Suc Suc_eq_plus1 bot_nat_0.extremum_strict diff_Suc_1 length_greater_0_conv less_SucE less_SucI less_diff_conv minus_gr_zero_iff nat_neq_iff nth_Cons_pos nth_append nth_append_length tag.distinct(1) tag.inject(1))
-
-
-lemma  "HCMToOCM_1 () preserves R2 under LRE_Beh_inv" 
-  apply zpog_full
-  apply (metis (no_types, lifting) Nat.lessE One_nat_def St.distinct(2) Suc_leI Suc_lessI diff_Suc_1 diff_is_0_eq' length_greater_0_conv nth_append nth_append_length tag.inject(1))
-  by (metis (no_types, lifting) One_nat_def St.distinct(2) Suc_eq_plus1 Suc_lessI diff_is_0_eq gr_implies_not_zero less_diff_conv linorder_not_le nth_append nth_append_length tag.inject(1))
+lemma "OCMToMOM() preserves  R2  under LRE_Beh_inv"
+  apply  zpog_full
+  apply (metis One_nat_def Suc_eq_plus1 nth_Cons_0 nth_Cons_Suc nth_append_length_plus)
+  apply (simp add: power_divide)
+  apply (simp add: nth_append power_divide)
+  by (simp add: nth_append power_divide)
  
 
-lemma  "MOMToHCM() preserves  R2 under LRE_Beh_inv"
-  apply (zpog_full; auto)
-  apply (metis Suc_lessI length_greater_0_conv less_Suc_eq less_one nth_append nth_append_length)
-  by (metis One_nat_def Suc_eq_plus1 Suc_lessI less_SucE less_diff_conv nth_append nth_append_length tag.distinct(1))
 
-lemma  "HCMToMOM() preserves  R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, ccfv_SIG) Suc_leI Suc_lessI Suc_less_SucD Suc_pred diff_is_0_eq' length_greater_0_conv less_2_cases less_Suc_eq_le nth_Cons_0 nth_append numeral_2_eq_2 tag.distinct(1))
+lemma  "MOMToOCM() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+
+lemma  "MOMToOCM_1() preserves  R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "MOMToOCM_2() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "HCMToOCM () preserves R2  under LRE_Beh_inv"
+  by  zpog_full
   
+lemma  "HCMToOCM_1() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
 
-lemma  "OCMToOCM(v) preserves  R2 under LRE_Beh_inv"
-  apply (zpog_full add: prod_var_decomp)
-  by (smt (verit, del_insts) Nat.lessE Suc_eq_plus1 Suc_less_eq diff_Suc_1 length_greater_0_conv less_2_cases nth_Cons_0 nth_Cons_Suc nth_append nth_append_length nth_append_length_plus numeral_2_eq_2 one_add_one tag.distinct(1))
+lemma  "MOMToHCM() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
 
+lemma  "HCMToMOM() preserves R2  under LRE_Beh_inv"
+  apply  zpog_full
+  apply (simp add: power_divide)
+  apply (simp add: power_divide)
+  apply (simp add: power_one_over)
+  by (simp add: power_one_over)
 
-lemma  "HCMToCAM() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, ccfv_SIG) Suc_leI Suc_lessI Suc_less_SucD Suc_pred diff_is_0_eq' length_greater_0_conv less_2_cases less_Suc_eq_le nth_Cons_0 nth_append numeral_2_eq_2 tag.disc(1) tag.disc(2))
+lemma  "OCMToOCM (v) preserves R2  under LRE_Beh_inv"
+  by  zpog_full
   
-
-lemma  "HCMToCAM_1() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  apply (smt (verit, best) One_nat_def Suc_diff_Suc Suc_mono diff_Suc_1 length_greater_0_conv linorder_not_le not_less_less_Suc_eq nth_append nth_append_length tag.distinct(1) zero_le)
-  by (smt (verit) One_nat_def Suc_diff_1 Suc_lessI Suc_less_SucD gr0I less_trans_Suc nth_append nth_append_length tag.distinct(1))
-
-  
-lemma  "MOMToCAM() preserves  R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, del_insts) Suc_leI Suc_pred length_greater_0_conv less_Suc0 less_Suc_eq nat_less_le nth_append nth_append_length)
-
-lemma  "MOMToCAM_1() preserves  R2 under LRE_Beh_inv"
-  apply zpog_full
-  apply (smt (verit, del_insts) Suc_pred less_Suc0 nat_neq_iff not_less_eq nth_append nth_append_length)
-  by (smt (verit, ccfv_threshold) Suc_pred less_Suc0 nat_neq_iff not_less_eq nth_append nth_append_length)
-
-
-lemma  "CAMToCAM() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit) One_nat_def Suc_eq_plus1 Suc_mono less_SucE less_diff_conv less_one linorder_neqE_nat nth_append nth_append_length tag.distinct(1))
-  
-
-lemma  "CAMToCAM_1() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  apply (smt (verit, ccfv_SIG) Suc_leI Suc_lessI Suc_less_SucD Suc_pred diff_is_0_eq' length_greater_0_conv less_2_cases less_Suc_eq_le nth_Cons_0 nth_append numeral_2_eq_2 tag.distinct(1))
-  by (metis (no_types, lifting) One_nat_def Suc_diff_1 Suc_mono length_greater_0_conv less_SucE linorder_not_le nth_append nth_append_length tag.distinct(1) zero_le)
-  
-
-lemma  "CAMToOCM() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, ccfv_threshold) One_nat_def Suc_eq_plus1 less_Suc_eq_0_disj less_antisym less_diff_conv less_one nth_append nth_append_length tag.distinct(1))
-  
-
-  
-lemma  "CAMToOCM_1() preserves R2 under LRE_Beh_inv"
-  apply zpog_full
-  by (smt (verit, ccfv_SIG) St.distinct(2) Suc_eq_plus1 Suc_lessI Suc_less_SucD Suc_pred cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_Suc_1 length_greater_0_conv less_Suc0 less_Suc_eq nth_Cons_0 nth_Cons_Suc nth_append nth_append_length tag.disc(1) tag.disc(2) tag.inject(1))
  
-lemma "Move() preserves R2 under LRE_Beh_inv"
-  by (zpog_full; auto)
+lemma  "HCMToCAM() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
 
-lemma  "Trigger(t) preserves R2 under LRE_Beh_inv"
-  by (zpog_full; auto)
+lemma  "HCMToCAM_1() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "MOMToCAM() preserves  R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "MOMToCAM_1() preserves  R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "CAMToCAM() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "CAMToCAM_1() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "CAMToOCM () preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma  "CAMToOCM_1() preserves  R2  under LRE_Beh_inv"
+  by  zpog_full
+
+lemma "Move() preserves R2  under LRE_Beh_inv"
+  by  zpog_full
+
+
+
 
 
 
@@ -776,8 +727,6 @@ lemma  "CAMToOCM_1() preserves  R3 under LRE_Beh_inv"
 lemma "Move() preserves R3 under LRE_Beh_inv"
   by  zpog_full
 
-lemma  "Trigger(t) preserves R3  under LRE_Beh_inv"
-  by  zpog_full
 
 end
 

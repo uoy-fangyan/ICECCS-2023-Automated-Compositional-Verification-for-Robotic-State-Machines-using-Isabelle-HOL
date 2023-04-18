@@ -495,9 +495,8 @@ tr  \<leadsto> [State initial],
   operations    InitialToOCM  OCMToOCM
  OCMToMOM MOMToOCM MOMToOCM_1  MOMToOCM_2 HCMToOCM HCMToOCM_1 MOMToHCM  HCMToMOM  HCMToCAM HCMToCAM_1  MOMToCAM MOMToCAM_1  CAMToCAM CAMToCAM_1  CAMToOCM CAMToOCM_1 
   
-definition [z_defs]: "LRE_Beh_axioms = (MinSafeDist>0)"
 
-lemma LRE_Beh_deadlock_free: "LRE_Beh_axioms \<Longrightarrow> deadlock_free LRE_BehMachine" 
+lemma LRE_Beh_deadlock_free: " deadlock_free LRE_BehMachine" 
   apply deadlock_free
   by (metis St.exhaust_disc)
 
